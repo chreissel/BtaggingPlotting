@@ -21,7 +21,7 @@ def_var = {
 variables = def_var.keys()
 
 # Function to create histograms
-def process(dataset, file_names, skip_events, max_events, output, PU): 
+def process(dataset, file_names, output, PU): 
 
 	# Adding all files to TChain    
 	chain = r.TChain("btagana/ttree")     
@@ -31,8 +31,8 @@ def process(dataset, file_names, skip_events, max_events, output, PU):
 	print "Chain contains {0} events".format(chain.GetEntries())     
 	
 	# Error in case more events shall be processed than accessible
-	if skip_events > chain.GetEntries() or skip_events + max_events > chain.GetEntries():         
-		raise Exception("Asked to process events [{0}, {1}) but chain contains only {1}".format(skip_events, skip_events + max_events, chain.GetEntries())) 
+	#if skip_events > chain.GetEntries() or skip_events + max_events > chain.GetEntries():         
+	#	raise Exception("Asked to process events [{0}, {1}) but chain contains only {1}".format(skip_events, skip_events + max_events, chain.GetEntries())) 
 
 	# Output file
 	o = r.TFile.Open(output, 'update')
@@ -50,7 +50,7 @@ def process(dataset, file_names, skip_events, max_events, output, PU):
 	t1_old = t0     
 	
 	# Looping over events
-	for iEv in range(skip_events, skip_events+max_events):         
+	for iEv in range(0, chain.GetEntries()):         
 		nBytes += chain.GetEntry(iEv)                 
 		if iEv % 100 == 0:             
 			t1_new = time.time()            
@@ -88,7 +88,7 @@ def process(dataset, file_names, skip_events, max_events, output, PU):
 
 	t2 = time.time()     
 	tot_time = t2 - t0     
-	print "Read {0:.2f} Mb in {1:.2f} seconds, {2:.2f} ev/s".format(nBytes/1024.0/1024.0, tot_time, max_events/tot_time)   
+	print "Read {0:.2f} Mb in {1:.2f} seconds, {2:.2f} ev/s".format(nBytes/1024.0/1024.0, tot_time, chain.GetEntries()/tot_time)   
 
 	# Save histograms	
 
@@ -104,13 +104,27 @@ if __name__ == "__main__":
 
 	# Settings  
 	
-	dataset = 'chs_RunIII2021'                 
-	skip_events = 0         
-	max_events = 100
-	file_names = ["root://t3se01.psi.ch:1094//store/user/creissel/btag/10_6_X__chs/TTbar_14TeV_TuneCP5_Pythia8/Run3Summer19MiniAOD-106X_mcRun3_2021_realistic_v3-v2/191023_163910/0000/JetTree_mc_1.root"]           
-	puProfile = [55, 60, 65, 70, 75]
+	#dataset = 'chs_RunIII2021'                 
+	#skip_events = 0         
+	#max_events = 100
+	#file_names = ["root://t3se01.psi.ch:1094//store/user/creissel/btag/10_6_X__chs/TTbar_14TeV_TuneCP5_Pythia8/Run3Summer19MiniAOD-106X_mcRun3_2021_realistic_v3-v2/191023_163910/0000/JetTree_mc_1.root"]           
+	#puProfile = [55, 60, 65, 70, 75]
 
-	output_file = 'histograms.root'
+	import argparse
+	parser = argparse.ArgumentParser(description='Fill histograms with ntuple content by BTagAnalyzer.')
+	parser.add_argument('--filelist', help='files to be processed')
+	parser.add_argument('--puBinning', help='binning for PU')
 
-	process(dataset, file_names, skip_events, max_events, output_file, puProfile)
+	args = parser.parse_args()
+
+	f = open(args.filelist, "r")
+	dataset = f.readline().rstrip()[1:-1]
+	files = [l.rstrip() for l in f][1:]
+	print(dataset)
+	print(files)
+    	puBinning = [int(x) for x in args.puBinning.split(",")]
+
+	output_file = dataset + ".root"
+
+	process(dataset, files, output_file, puBinning)
 
