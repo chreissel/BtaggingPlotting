@@ -27,9 +27,10 @@ perEvent_Variables = [
 ]
 
 new_Variables = [
-"nTrack",
+"nTracks",
 "nPixelHits",
-"SVmass"
+"SV_mass",
+"nTracks_fromSV"
 ]
 
 # Function to create histograms
@@ -77,25 +78,28 @@ def process(dataset, file_names, output):
 				for v in perEvent_Variables:
 					setattr(tree, v, getattr(chain,v))
 
-				nTrack = 0
-				SV = r.TLorentzVector()
+				nTracks = 0
+				nTracks_fromSV = 0
+				SV = r.TLorentzVector(0., 0., 0., 0.)
 				nPixelHits = 0
 				for iTrack in range(chain.Jet_nFirstTrack[iJet], chain.Jet_nLastTrack[iJet]):
 
 					if (chain.Track_nHitAll[iTrack]>8) and (chain.Track_nHitPixel[iTrack]>2) and (chain.Track_pt[iTrack]>1.) and (chain.Track_chi2[iTrack]<5):
-						nTrack += 1
+						nTracks += 1
 						nPixelHits += chain.Track_nHitPixel[iTrack]
 
-						if chain.Track_isfromSV:
-							track_p4 = r.TLorentzVector()
-							track_p4.SetPtEtaPhiM(chain.Track_pt[iTrack], chain.Track_eta[iTrack], chain.Track_phi[iTrack], chain.Track_p[iTrack])
+						if chain.Track_isfromSV[iTrack]:
+							nTracks_fromSV += 1
+							track_p4 = r.TLorentzVector(0., 0., 0., 0.)
+							track_p4.SetPtEtaPhiM(chain.Track_pt[iTrack], chain.Track_eta[iTrack], chain.Track_phi[iTrack], 0.)
 							SV += track_p4
 
-					SVmass = SV.M()
+				SV_mass = SV.M()
 
-				setattr(tree, "nTrack", nTrack)
+				setattr(tree, "nTracks", nTracks)
+				setattr(tree, "nTracks_fromSV", nTracks_fromSV)
 				setattr(tree, "nPixelHits", nPixelHits)
-				setattr(tree, "SVmass", SVmass)
+				setattr(tree, "SV_mass", SV_mass)
 
 				tree.fill()
 
