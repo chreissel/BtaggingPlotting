@@ -18,11 +18,18 @@ perJet_Variables = [
 "Jet_DeepFlavourCvsBDisc",
 "Jet_pt",
 "Jet_eta",
-"Jet_hadronFlavour"
+"Jet_hadronFlavour",
+"Jet_nseltracks"
 ]
 
 perEvent_Variables = [
 "nPUtrue"
+]
+
+new_Variables = [
+"nTrack",
+"nPixelHits",
+"SVmass"
 ]
 
 # Function to create histograms
@@ -42,6 +49,7 @@ def process(dataset, file_names, output):
 	tree = Tree("tree")
 	branches = { v: 'F' for v in perJet_Variables }
 	branches.update({v: 'F' for v in perEvent_Variables})
+	branches.update({v: 'F' for v in new_Variables})
 	tree.create_branches(branches)
 
 	#total number of bytes read     
@@ -69,6 +77,26 @@ def process(dataset, file_names, output):
 				for v in perEvent_Variables:
 					setattr(tree, v, getattr(chain,v))
 
+				nTrack = 0
+				SV = r.TLorentzVector()
+				nPixelHits = 0
+				for iTrack in range(chain.Jet_nFirstTrack[iJet], chain.Jet_nLastTrack[iJet]):
+
+					if (chain.Track_nHitAll[iTrack]>8) and (chain.Track_nHitPixel[iTrack]>2) and (chain.Track_pt[iTrack]>1.) and (chain.Track_chi2[iTrack]<5):
+						nTrack += 1
+						nPixelHits += chain.Track_nHitPixel[iTrack]
+
+						if chain.Track_isfromSV:
+							track_p4 = r.TLorentzVector()
+							track_p4.SetPtEtaPhiM(chain.Track_pt[iTrack], chain.Track_eta[iTrack], chain.Track_phi[iTrack], chain.Track_p[iTrack])
+							SV += track_p4
+
+					SVmass = SV.M()
+
+				setattr(tree, "nTrack", nTrack)
+				setattr(tree, "nPixelHits", nPixelHits)
+				setattr(tree, "SVmass", SVmass)
+
 				tree.fill()
 
 
@@ -94,17 +122,15 @@ if __name__ == "__main__":
 	#file_names = ["root://t3se01.psi.ch:1094//store/user/creissel/btag/10_6_X__chs/TTbar_14TeV_TuneCP5_Pythia8/Run3Summer19MiniAOD-106X_mcRun3_2021_realistic_v3-v2/191023_163910/0000/JetTree_mc_1.root"]           
 	#puProfile = [55, 60, 65, 70, 75]
 
-	import argparse
-	parser = argparse.ArgumentParser(description='Fill histograms with ntuple content by BTagAnalyzer.')
-	parser.add_argument('--filelist', help='files to be processed')
-	args = parser.parse_args()
+        import argparse
+        parser = argparse.ArgumentParser(description='Fill histograms with ntuple content by BTagAnalyzer.')
+        parser.add_argument('--file', help='files to be processed')
+        parser.add_argument('--dataset', help='Label of dataset')
+        parser.add_argument('--output', help='Name of output .root file containing the per Jet trees')
+        args = parser.parse_args()
 
-	f = open(args.filelist, "r")
-	dataset = f.readline().rstrip()[1:-1]
-	files = [l.rstrip() for l in f][1:]
-	print(dataset)
-	print(files)
-	output_file = dataset + ".root"
+        print(args.dataset)
+        print(args.file)
 
-	process(dataset, files, output_file)
+	process(args.dataset, [args.file], args.output)
 
